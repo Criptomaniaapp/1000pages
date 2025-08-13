@@ -1,40 +1,59 @@
-// pages/api/check-area.ts
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { query } from '../../lib/db';
+import { NextApiRequest, NextApiResponse } from 'next';
+import { query } from '../../lib/db'; // Correcto: Importar { query }
+import { GRID_WIDTH, GRID_HEIGHT } from '../../lib/constants';
 
-// Interfaz para tipar cada bloque de píxeles (opcional, pero recomendado para consistencia)
-interface PixelBlock {
-  id: number;
-  x_start: number;
-  y_start: number;
-  width: number;
-  height: number;
-  owner_wallet: string;
-  image_url: string;
-  link: string;
-  tooltip: string;
-}
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method === 'POST') {
-    const { x, y, w, h } = req.body; // Directamente desestructura req.body (ya es objeto)
+  const { x, y, width, height } = req.body;
 
-    // Validación básica para evitar errores
-    if (typeof x !== 'number' || typeof y !== 'number' || typeof w !== 'number' || typeof h !== 'number' || w <= 0 || h <= 0) {
-      return res.status(400).json({ error: 'Parámetros inválidos: x, y, w, h deben ser números positivos' });
-    }
+  if (
+    typeof x !== 'number' ||
+    typeof y !== 'number' ||
+    typeof width !== 'number' ||
+    typeof height !== 'number'
+  ) {
+    return res
+      .status(400)
+      .json({ available: false, error: 'Invalid input types' });
+  }
 
-    // Lógica para chequear overlap con bloques existentes (ej: consulta SQL para ver si hay intersección)
-    const overlapping = await query(
-      'SELECT * FROM pixels WHERE NOT (x_start + width <= ? OR x_start >= ? + ? OR y_start + height <= ? OR y_start >= ? + ?)',
-      [x, x, w, y, y, h]
-    ) as PixelBlock[]; // Casteo opcional si usas la interfaz
+  // Usar constantes para la validación
+  if (
+    x < 0 ||
+    y < 0 ||
+    width <= 0 ||
+    height <= 0 ||
+    x + width > GRID_WIDTH ||
+    y + height > GRID_HEIGHT
+  ) {
+    return res
+      .status(400)
+      .json({ available: false, error: 'Coordinates out of bounds' });
+  }
 
-    if (overlapping.length > 0) {
-      return res.status(400).json({ error: 'Área ocupada' });
-    }
-    return res.status(200).json({ success: true });
-  } else {
-    res.status(405).end();
+  try {
+    const sql = `
+      SELECT COUNT(*) as count FROM pixels
+      WHERE x < ? AND x + width > ?
+      AND y < ? AND y + height > ?
+    `;
+    const values = [x + width, x, y + height, y];
+    
+    // Correcto: Llamar a la función query() directamente
+    const [rows] = await query(sql, values);
+
+    // @ts-ignore
+    const count = rows[0].count;
+
+    res.status(200).json({ available: count === 0 });
+  } catch (error) {
+    console.error('DB query failed:', error);
+    res.status(500).json({ available: false, error: 'Internal server error' });
   }
 }

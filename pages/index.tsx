@@ -2,45 +2,35 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import Head from 'next/head'; // Importar Head para el SEO
+import Head from 'next/head';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import GridInteractor from '../components/GridInteractor';
 import { PixelBlock } from '../types/pixelBlock';
+import { query } from '../lib/db';
+import { list } from '@vercel/blob';
 
-function HomeComponent({ initialBlocks, gridImageUrl }: { initialBlocks: PixelBlock[], gridImageUrl: string }) {
-  const [referrerAddress, setReferrerAddress] = useState<string | null>(null);
-  const router = useRouter();
+// --- Componente Principal con la Lógica del Cliente ---
+function HomeComponent({ initialBlocks, gridImageUrl, referrerAddress }: { initialBlocks: PixelBlock[], gridImageUrl: string, referrerAddress: string | null }) {
 
-  // --- SEO Content ---
-  const pageTitle = "The Million Memecoin Homepage - Your Ad on Internet History";
-  const pageDescription = "Buy a piece of internet history on The Million Memecoin Homepage. Purchase pixel ad space on our 1,000,000 pixel grid, powered by Solana. Feature your memecoin or project forever.";
-  const siteUrl = "https://onemillionmemecoinpage.com";
-  // Reemplaza esta URL con una imagen atractiva de tu sitio para compartir en redes sociales (1200x630px recomendado)
+  // --- NUEVO Contenido SEO ---
+  const pageTitle = "The Thousand Block Homepage - Your Ad on a Digital Canvas";
+  const pageDescription = "Buy a piece of digital history on The Thousand Block Homepage. Purchase ad space on our 1,000 block grid, with payments in Solana or Stripe. Feature your project forever.";
+  const siteUrl = "https://tu-dominio.com"; // <-- REEMPLAZA CON TU DOMINIO REAL
   const socialImageUrl = `${siteUrl}/memecoin.png`; 
 
-  // Datos Estructurados JSON-LD para un mejor SEO
+  // --- NUEVOS Datos Estructurados JSON-LD ---
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    "name": "The Million Memecoin Homepage",
+    "name": "The Thousand Block Homepage", // <-- CAMBIADO
     "url": siteUrl,
-    "description": pageDescription,
+    "description": pageDescription, // <-- CAMBIADO
     "potentialAction": {
       "@type": "ViewAction",
       "target": siteUrl
     }
   };
-
-  useEffect(() => {
-    if (router.isReady) {
-      const ref = router.query.ref;
-      if (ref && typeof ref === 'string') {
-        console.log('Referrer found in URL:', ref);
-        setReferrerAddress(ref);
-      }
-    }
-  }, [router.isReady, router.query]);
 
   return (
     <div>
@@ -73,6 +63,7 @@ function HomeComponent({ initialBlocks, gridImageUrl }: { initialBlocks: PixelBl
       <main>
         <div className="grid-scroll-container">
           <GridInteractor 
+            // Las props están bien, no hay que cambiarlas.
             initialBlocks={initialBlocks} 
             referrerAddress={referrerAddress} 
             gridImageUrl={gridImageUrl}
@@ -84,25 +75,38 @@ function HomeComponent({ initialBlocks, gridImageUrl }: { initialBlocks: PixelBl
   );
 }
 
-import { query } from '../lib/db';
-import { list } from '@vercel/blob';
-
+// --- Componente de Página y Lógica del Servidor ---
 export default function Page({ initialBlocks, gridImageUrl }: { initialBlocks: PixelBlock[], gridImageUrl: string }) {
-    return <HomeComponent initialBlocks={initialBlocks} gridImageUrl={gridImageUrl} />;
+  const router = useRouter();
+  const [referrerAddress, setReferrerAddress] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (router.isReady) {
+      const ref = router.query.ref;
+      if (ref && typeof ref === 'string') {
+        console.log('Referrer found in URL:', ref);
+        setReferrerAddress(ref);
+      }
+    }
+  }, [router.isReady, router.query]);
+
+  return <HomeComponent initialBlocks={initialBlocks} gridImageUrl={gridImageUrl} referrerAddress={referrerAddress} />;
 }
 
 export async function getServerSideProps() {
   const blocks = await query('SELECT * FROM pixels');
   const serializedBlocks = blocks.map((block: any) => ({
     ...block,
+    // Asegurarse de que el objeto Date es serializable
     sold_at: block.sold_at ? block.sold_at.toISOString() : null,
   }));
 
-  let gridImageUrl = '/placeholder-grid.png';
+  let gridImageUrl = '/placeholder-grid.png'; // Fallback
   try {
     const { blobs } = await list({ prefix: 'grid.png', limit: 1 });
     if (blobs.length > 0) {
         const baseUrl = blobs[0].url;
+        // Añadir un timestamp previene problemas de caché. La imagen se recargará cuando cambie.
         gridImageUrl = `${baseUrl}?v=${new Date().getTime()}`;
     } else {
         console.log("grid.png not found in Vercel Blob, using fallback.");

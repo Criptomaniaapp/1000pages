@@ -1,36 +1,39 @@
-// pages/_app.tsx
-import type { AppProps } from 'next/app';
-import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
-import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
-import { useMemo } from 'react'; // Importar useMemo para optimización
-import { connection } from '../lib/solana';
-import Analytics from '../components/Analytics'; // Importar el componente de Analytics
 import '../styles/globals.css';
-import '@solana/wallet-adapter-react-ui/styles.css';
+import type { AppProps } from 'next/app';
+import { useMemo } from 'react';
+import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
+import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
+import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
+import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
+import { clusterApiUrl } from '@solana/web3.js';
+import { Toaster } from 'react-hot-toast';
 
-export default function MyApp({ Component, pageProps }: AppProps) {
-  // Se recomienda usar useMemo para evitar que el array de wallets se recree en cada renderizado
-  const wallets = useMemo(
-    () => [
-      new PhantomWalletAdapter(),
-      new SolflareWalletAdapter(),
-    ],
-    []
-  );
+// Stripe
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
+
+require('@solana/wallet-adapter-react-ui/styles.css');
+
+// Cargar Stripe fuera del renderizado para evitar recrearlo en cada render
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY!);
+
+function MyApp({ Component, pageProps }: AppProps) {
+  const network = WalletAdapterNetwork.Mainnet; // o Devnet
+  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+  const wallets = useMemo(() => [new PhantomWalletAdapter(), new SolflareWalletAdapter()], []);
 
   return (
-    <>
-      {/* Añade el componente de Analytics aquí para que se cargue en todas las páginas */}
-      <Analytics />
-      
-      <ConnectionProvider endpoint={connection.rpcEndpoint}>
-        <WalletProvider wallets={wallets} autoConnect>
-          <WalletModalProvider>
+    <ConnectionProvider endpoint={endpoint}>
+      <WalletProvider wallets={wallets} autoConnect>
+        <WalletModalProvider>
+          <Elements stripe={stripePromise}>
             <Component {...pageProps} />
-          </WalletModalProvider>
-        </WalletProvider>
-      </ConnectionProvider>
-    </>
+            <Toaster position="bottom-center" />
+          </Elements>
+        </WalletModalProvider>
+      </WalletProvider>
+    </ConnectionProvider>
   );
 }
+
+export default MyApp;

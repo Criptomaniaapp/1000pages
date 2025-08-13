@@ -1,63 +1,72 @@
-// pages/api/save-purchase.ts
-import type { NextApiRequest, NextApiResponse } from 'next';
-import multer from 'multer';
-import pinataSDK from '@pinata/sdk';
-import streamifier from 'streamifier';
+import { NextApiRequest, NextApiResponse } from 'next';
+import { verifySignature } from '../../lib/solana'; // Esta importación ahora es válida
+import { savePurchaseToDB } from '../../lib/savePurchase';
 import { put } from '@vercel/blob';
-import { query } from '../../lib/db';
-// CAMBIO: Importamos nuestra nueva y optimizada función de regeneración.
-import { generateGridBuffer } from '../../lib/generateGrid';
+import { PublicKey } from '@solana/web3.js';
 
-const upload = multer({ storage: multer.memoryStorage() });
-const pinata = new pinataSDK(process.env.PINATA_API_KEY, process.env.PINATA_SECRET_API_KEY);
-const GRID_BLOB_FILENAME = 'grid.png';
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
 
-export const config = { api: { bodyParser: false } };
+  try {
+    const {
+      x,
+      y,
+      width,
+      height,
+      link,
+      imageBase64,
+      owner,
+      signature,
+      referrer,
+    } = req.body;
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method === 'POST') {
-    try {
-      await new Promise<void>((resolve, reject) => {
-        upload.single('image')(req as any, res as any, (err: any) => {
-          if (err) return reject(err);
-          resolve();
-        });
-      });
+    const price = width * height; // Calcular el precio
+    const buyerPublicKey = new PublicKey(owner);
+    const referrerPublicKey = referrer ? new PublicKey(referrer) : undefined;
 
-      const file = (req as any).file;
-      if (!file) return res.status(400).json({ error: 'No image uploaded' });
+    // 1. Verificar firma de la transacción de Solana
+    const isVerified = await verifySignature(
+      signature,
+      buyerPublicKey,
+      price,
+      referrerPublicKey
+    );
 
-      // 1. Subir la nueva imagen a Pinata
-      const stream = streamifier.createReadStream(file.buffer);
-      const pinataResult = await pinata.pinFileToIPFS(stream, { pinataMetadata: { name: `PixelImage-${Date.now()}` } });
-      const imageUrl = `https://gateway.pinata.cloud/ipfs/${pinataResult.IpfsHash}`;
-
-      // 2. Guardar la información de la compra en la base de datos
-      const { area, wallet, link } = req.body as { area: string; wallet: string; link: string };
-      const parsedArea = JSON.parse(area);
-      await query(
-        'INSERT INTO pixels (x_start, y_start, width, height, owner_wallet, image_url, link) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [parsedArea.x, parsedArea.y, parsedArea.w, parsedArea.h, wallet, imageUrl, link || null]
-      );
-
-      // 3. Regenerar el grid COMPLETO desde la base de datos de forma optimizada.
-      console.log('Purchase saved. Triggering full grid regeneration...');
-      const gridBuffer = await generateGridBuffer();
-
-      // 4. Subir el nuevo grid a Vercel Blob.
-      await put(GRID_BLOB_FILENAME, gridBuffer, {
-        access: 'public',
-        allowOverwrite: true,
-      });
-      console.log('New grid successfully generated and uploaded to Vercel Blob.');
-
-      return res.status(200).json({ success: true });
-    } catch (err) {
-      console.error('Error in save-purchase handler:', err);
-      return res.status(500).json({ error: 'Error processing purchase' });
+    if (!isVerified) {
+      return res.status(400).json({ error: 'Invalid or fraudulent signature' });
     }
-  } else {
-    res.setHeader('Allow', ['POST']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+
+    // 2. Subir imagen a Vercel Blob
+    const imageBuffer = Buffer.from(imageBase64, 'base64');
+    const blob = await put(`purchase-${signature}.png`, imageBuffer, {
+      access: 'public',
+      contentType: 'image/png',
+    });
+
+    // 3. Llamar a la función de guardado unificada
+    await savePurchaseToDB({
+      x,
+      y,
+      width,
+      height,
+      link,
+      image_url: blob.url,
+      owner,
+      signature,
+    });
+
+    res
+      .status(200)
+      .json({ success: true, message: 'Purchase saved and grid updated.' });
+  } catch (error: any) {
+    console.error('Save purchase failed:', error);
+    res
+      .status(500)
+      .json({ error: 'Internal Server Error', details: error.message });
   }
 }

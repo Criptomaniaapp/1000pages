@@ -1,12 +1,13 @@
 // types/pixelBlock.ts
 export interface PixelBlock {
   id: number;
-  x_start: number;
-  y_start: number;
+  x: number;
+  y: number;
   width: number;
   height: number;
-  owner_wallet: string;
-  image_url: string;
   link: string;
-  tooltip: string;
+  image_url: string;
+  owner: string;
+  signature: string;
+  sold_at: string; // O Date, pero string es más seguro para la serialización
 }

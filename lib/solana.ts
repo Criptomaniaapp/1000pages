@@ -1,120 +1,159 @@
-// lib/solana.ts
+import {
+  createAssociatedTokenAccountInstruction,
+  getAssociatedTokenAddress,
+  createTransferInstruction, // Importar directamente para evitar 'await import'
+} from '@solana/spl-token';
 import {
   Connection,
   PublicKey,
-  TransactionMessage,
-  VersionedTransaction,
+  Transaction,
+  clusterApiUrl,
 } from '@solana/web3.js';
-import {
-  createAssociatedTokenAccountInstruction,
-  createTransferInstruction,
-  getAssociatedTokenAddress,
-} from '@solana/spl-token';
 
-// --- CONFIGURACIÓN ---
-const SOLANA_RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
-if (!SOLANA_RPC_URL) {
-  throw new Error('NEXT_PUBLIC_SOLANA_RPC_URL not set in .env');
-}
-export const connection = new Connection(SOLANA_RPC_URL);
+// --- CONSTANTES ---
+export const SHOP_WALLET_ADDRESS = new PublicKey(
+  '14PujRChawVVUR3TDo1q327dkDvFdAFZ4HfMMAurxaY' // Reemplaza esto con tu dirección de wallet de Solana
+);
+const USDC_MINT_ADDRESS = new PublicKey(
+  'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' // Dirección de USDC en Mainnet
+);
+const REFERRER_FEE_BPS = 2000; // 20% en basis points
 
-const RECEIVER_WALLET_STR = process.env.NEXT_PUBLIC_RECEIVER_WALLET;
-if (!RECEIVER_WALLET_STR) {
-  throw new Error('NEXT_PUBLIC_RECEIVER_WALLET not set in .env');
-}
-const recipientPublicKey = new PublicKey(RECEIVER_WALLET_STR);
+// --- FUNCIÓN PARA CREAR LA TRANSACCIÓN ---
+export async function makeSolanaTransaction(
+  buyer: PublicKey,
+  selection: { x: number; y: number; width: number; height: number },
+  referrer?: PublicKey
+): Promise<{ transaction: Transaction; referrer?: PublicKey }> {
+  const connection = new Connection(clusterApiUrl('mainnet-beta'));
+  const price = selection.width * selection.height;
+  const fee = referrer ? price * (REFERRER_FEE_BPS / 10000) : 0;
+  const shopAmount = price - fee;
 
-const USDC_MINT_STR = process.env.NEXT_PUBLIC_USDC_MINT;
-if (!USDC_MINT_STR) {
-  throw new Error('NEXT_PUBLIC_USDC_MINT not set in .env');
-}
-const usdcMintPublicKey = new PublicKey(USDC_MINT_STR);
+  const buyerUSDCTokenAccount = await getAssociatedTokenAddress(
+    USDC_MINT_ADDRESS,
+    buyer
+  );
 
-/**
- * Crea una transacción para transferir USDC, dividiendo el pago si se proporciona un referente.
- * @param ownerPublicKey - La PublicKey del comprador.
- * @param amount - La cantidad TOTAL de USDC a transferir (ej: 25).
- * @param referralWalletAddress - La dirección de la billetera del referente (opcional).
- * @returns Una VersionedTransaction lista para ser firmada.
- */
-export async function createUsdcTransfer(
-  ownerPublicKey: PublicKey,
-  amount: number,
-  referralWalletAddress?: string | null
-): Promise<VersionedTransaction> {
-  try {
-    const instructions = [];
-    const ownerTokenAccountAddress = await getAssociatedTokenAddress(usdcMintPublicKey, ownerPublicKey);
-    const recipientTokenAccountAddress = await getAssociatedTokenAddress(usdcMintPublicKey, recipientPublicKey);
+  const transaction = new Transaction();
 
-    // Comprobar si las cuentas de token (ATA) existen
-    const ownerAtaInfo = await connection.getAccountInfo(ownerTokenAccountAddress);
-    if (!ownerAtaInfo) {
-      instructions.push(createAssociatedTokenAccountInstruction(ownerPublicKey, ownerTokenAccountAddress, ownerPublicKey, usdcMintPublicKey));
-    }
-
-    const recipientAtaInfo = await connection.getAccountInfo(recipientTokenAccountAddress);
-    if (!recipientAtaInfo) {
-      instructions.push(createAssociatedTokenAccountInstruction(ownerPublicKey, recipientTokenAccountAddress, recipientPublicKey, usdcMintPublicKey));
-    }
-
-    // Lógica de división de pagos
-    if (referralWalletAddress) {
-      const referrerPublicKey = new PublicKey(referralWalletAddress);
-      const referrerTokenAccountAddress = await getAssociatedTokenAddress(usdcMintPublicKey, referrerPublicKey);
-      
-      const referrerAtaInfo = await connection.getAccountInfo(referrerTokenAccountAddress);
-      if (!referrerAtaInfo) {
-        instructions.push(createAssociatedTokenAccountInstruction(ownerPublicKey, referrerTokenAccountAddress, referrerPublicKey, usdcMintPublicKey));
-      }
-
-      // Calcular los montos
-      const mainAmount = amount * 0.80; // 80% para el destinatario principal
-      const referralAmount = amount * 0.20; // 20% para el referente
-
-      // Instrucción para el destinatario principal
-      instructions.push(
-        createTransferInstruction(
-          ownerTokenAccountAddress,
-          recipientTokenAccountAddress,
-          ownerPublicKey,
-          mainAmount * 1_000_000
-        )
-      );
-
-      // Instrucción para el referente
-      instructions.push(
-        createTransferInstruction(
-          ownerTokenAccountAddress,
-          referrerTokenAccountAddress,
-          ownerPublicKey,
-          referralAmount * 1_000_000
-        )
-      );
-    } else {
-      // Lógica sin referente (100% al destinatario principal)
-      instructions.push(
-        createTransferInstruction(
-          ownerTokenAccountAddress,
-          recipientTokenAccountAddress,
-          ownerPublicKey,
-          amount * 1_000_000
-        )
-      );
-    }
-
-    const latestBlockhash = await connection.getLatestBlockhash('confirmed');
-    const messageV0 = new TransactionMessage({
-      payerKey: ownerPublicKey,
-      recentBlockhash: latestBlockhash.blockhash,
-      instructions: instructions,
-    }).compileToV0Message();
-
-    const transaction = new VersionedTransaction(messageV0);
-    return transaction;
-
-  } catch (error) {
-    console.error('Error creating USDC transfer transaction:', error);
-    throw new Error('Could not create the transaction.');
+  const buyerAccountInfo = await connection.getAccountInfo(
+    buyerUSDCTokenAccount
+  );
+  if (!buyerAccountInfo) {
+    transaction.add(
+      createAssociatedTokenAccountInstruction(
+        buyer,
+        buyerUSDCTokenAccount,
+        buyer,
+        USDC_MINT_ADDRESS
+      )
+    );
   }
+
+  transaction.add(
+    createTransferInstruction(
+      buyerUSDCTokenAccount,
+      await getAssociatedTokenAddress(USDC_MINT_ADDRESS, SHOP_WALLET_ADDRESS),
+      buyer,
+      shopAmount * 1_000_000
+    )
+  );
+
+  if (referrer && fee > 0) {
+    transaction.add(
+      createTransferInstruction(
+        buyerUSDCTokenAccount,
+        await getAssociatedTokenAddress(USDC_MINT_ADDRESS, referrer),
+        buyer,
+        fee * 1_000_000
+      )
+    );
+  }
+
+  const { blockhash } = await connection.getLatestBlockhash();
+  transaction.recentBlockhash = blockhash;
+  transaction.feePayer = buyer;
+
+  return { transaction, referrer };
+}
+
+// --- FUNCIÓN DE VERIFICACIÓN (CORREGIDA) ---
+export async function verifySignature(
+  signature: string,
+  buyer: PublicKey,
+  price: number,
+  referrer?: PublicKey
+): Promise<boolean> {
+  const connection = new Connection(clusterApiUrl('mainnet-beta'));
+  const tx = await connection.getParsedTransaction(signature, 'confirmed');
+
+  if (!tx) {
+    console.error('Transaction not found.');
+    return false;
+  }
+
+  const fee = referrer ? price * (REFERRER_FEE_BPS / 10000) : 0;
+  const shopAmount = (price - fee) * 1_000_000;
+  const referrerAmount = fee * 1_000_000;
+
+  const tokenTransfers = tx.meta?.innerInstructions
+    ?.flatMap((i) => i.instructions)
+    .filter(
+      (ix) =>
+        'parsed' in ix &&
+        ix.program === 'spl-token' &&
+        ix.parsed.type === 'transfer'
+    )
+    .map((ix: any) => ix.parsed.info);
+
+  if (!tokenTransfers || tokenTransfers.length === 0) {
+    console.error('No token transfers found in transaction.');
+    return false;
+  }
+
+  // --- CORRECCIÓN CLAVE AQUÍ ---
+  // Para usar await dentro de .some(), debemos manejar las promesas.
+  // La forma más limpia es usar un bucle `for...of` en lugar de `.some`.
+
+  let shopPaymentVerified = false;
+  const buyerTokenAddress = (await getAssociatedTokenAddress(USDC_MINT_ADDRESS, buyer)).toBase58();
+  const shopTokenAddress = (await getAssociatedTokenAddress(USDC_MINT_ADDRESS, SHOP_WALLET_ADDRESS)).toBase58();
+
+  for (const t of tokenTransfers) {
+    if (
+      t.source === buyerTokenAddress &&
+      t.destination === shopTokenAddress &&
+      parseInt(t.amount, 10) >= shopAmount
+    ) {
+      shopPaymentVerified = true;
+      break; // Salimos del bucle una vez que lo encontramos
+    }
+  }
+
+  if (!shopPaymentVerified) {
+    console.error('Shop payment verification failed.');
+    return false;
+  }
+
+  if (referrer) {
+    let referrerPaymentVerified = false;
+    const referrerTokenAddress = (await getAssociatedTokenAddress(USDC_MINT_ADDRESS, referrer)).toBase58();
+    for (const t of tokenTransfers) {
+      if (
+        t.destination === referrerTokenAddress &&
+        parseInt(t.amount, 10) >= referrerAmount
+      ) {
+        referrerPaymentVerified = true;
+        break;
+      }
+    }
+    if (!referrerPaymentVerified) {
+      console.error('Referrer payment verification failed.');
+      return false;
+    }
+  }
+
+  console.log('Signature verified successfully!');
+  return true;
 }
