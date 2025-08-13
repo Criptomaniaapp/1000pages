@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+CORRECCIÓN: La URL debe apuntar directamente a tu sitemap.xml
+Sitemap: https://onemillionmemecoinpage.com/sitemap.xml

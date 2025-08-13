@@ -1,0 +1,809 @@
+@import url('https://fonts.googleapis.com/css2?family=Revalia&family=Roboto:wght@400;500;700&display=swap');
+
+:root {
+  --background-rgb: 255, 255, 255;
+  --foreground-rgb: 23, 23, 23;
+  --background: #ffffff;
+  --foreground: #171717;
+  --primary-color: #0070f3;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background-rgb: 10, 10, 10;
+    --foreground-rgb: 237, 237, 237;
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: "Roboto", sans-serif; /* Usamos Roboto para la legibilidad general */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.grid-container {
+  text-align: center;
+  margin: 20px;
+  position: relative; /* Asegura que el image map y el canvas estén alineados */
+
+}
+
+.grid-container img,
+.grid-container canvas {
+  width: 1000px !important; /* Ajuste visual */
+  height: 1000px !important;
+  border: 1px solid #333;
+}
+
+.grid-container canvas {
+  z-index: 10; /* Sobre la imagen */
+}
+
+.grid-container img {
+  z-index: 5; /* Debajo del canvas */
+}
+
+.success-notification {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 128, 0, 0.8);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  z-index: 1000;
+}
+
+.error-notification {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 0, 0, 0.8);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  z-index: 1000;
+}
+
+.popover {
+  position: fixed;
+  z-index: 1000;
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  max-width: 300px;
+  max-height: 300px;
+  overflow: hidden;
+  display: none; /* Inicialmente oculto, correcto */
+}
+
+.popover img {
+  max-width: 300px;
+  max-height: 300px;
+  object-fit: contain; /* Mantiene la proporción de la imagen */
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+/* --- Estilos del Header Mejorados --- */
+.header {
+  /* Efecto de vidrio esmerilado y header pegajoso */
+  background-color: rgba(var(--background-rgb), 0.8);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(var(--foreground-rgb), 0.1);
+  padding: 0 20px;
+  position: sticky;
+  top: 0;
+  z-index: 1100;
+}
+
+.header-content-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  height: 70px; /* Altura fija para consistencia */
+}
+
+.header-logo a {
+  display: flex;
+  align-items: center;
+}
+
+.header-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.header-message {
+  color: rgba(var(--foreground-rgb), 0.6);
+  font-size: 0.8em;
+  font-weight: 500;
+  /* Usamos la fuente especial solo para el mensaje */
+  font-family: "Revalia", sans-serif;
+}
+
+.header-nav {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.header-nav a, .nav-button {
+  text-decoration: none;
+  color: var(--foreground);
+  font-weight: 500;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95em;
+  font-family: "Roboto", sans-serif;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.header-nav a:hover, .nav-button:hover {
+  background-color: rgba(var(--foreground-rgb), 0.05);
+}
+
+.header-wallet {
+  margin-left: auto;
+}
+
+/* --- Slider de Referidos --- */
+.referral-marquee {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 10px 0;
+  overflow: hidden;
+  white-space: nowrap;
+  width: 100%;
+  box-shadow: inset 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.marquee-content {
+  display: inline-block;
+  animation: marquee 40s linear infinite;
+  padding-left: 100%; /* Inicia fuera de la pantalla */
+}
+
+.marquee-content span {
+  font-size: 0.9em;
+  font-weight: 500;
+  margin-right: 80px; /* Espacio entre las repeticiones del texto */
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+/* --- Menú Móvil (Sin cambios funcionales, solo estéticos) --- */
+
+.mobile-menu-button {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  z-index: 1201;
+  margin-left: auto;
+}
+
+.hamburger-icon {
+  width: 24px;
+  height: 18px;
+  position: relative;
+  transform: rotate(0deg);
+  transition: .5s ease-in-out;
+}
+
+.hamburger-icon span {
+  display: block;
+  position: absolute;
+  height: 2.5px;
+  width: 100%;
+  background: var(--foreground);
+  border-radius: 9px;
+  opacity: 1;
+  left: 0;
+  transform: rotate(0deg);
+  transition: .25s ease-in-out;
+}
+
+.hamburger-icon span:nth-child(1) { top: 0px; }
+.hamburger-icon span:nth-child(2) { top: 8px; }
+.hamburger-icon span:nth-child(3) { top: 16px; }
+.hamburger-icon.open span:nth-child(1) { top: 8px; transform: rotate(135deg); }
+.hamburger-icon.open span:nth-child(2) { opacity: 0; left: -60px; }
+.hamburger-icon.open span:nth-child(3) { top: 8px; transform: rotate(-135deg); }
+
+.mobile-nav-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  z-index: 1200;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.mobile-nav {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* Empuja los elementos a los extremos */
+  align-items: center;
+  height: 70%; /* Ocupa una porción de la pantalla para permitir el espaciado */
+  text-align: center;
+}
+
+.mobile-nav-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px; /* Espacio entre los enlaces principales */
+}
+
+.mobile-nav-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 25px; /* Espacio entre redes y wallet */
+}
+
+.mobile-nav a, .mobile-nav .nav-button {
+  color: white;
+  font-size: 1.8em;
+  font-weight: bold;
+}
+
+.mobile-socials {
+  display: flex;
+  gap: 30px;
+}
+
+.mobile-socials .social-icon {
+  color: rgba(255, 255, 255, 0.8);
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.mobile-socials .social-icon:hover {
+  color: white;
+  transform: scale(1.1);
+}
+
+.mobile-socials .social-icon svg {
+  width: 30px;
+  height: 30px;
+}
+
+/* --- Estilos del Modal de FAQ --- */
+.faq-modal-content {
+  background: var(--background);
+  padding: 20px 40px 40px 40px;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  width: 90%;
+  max-width: 680px; /* Más ancho para el contenido de FAQ */
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+  text-align: left;
+}
+
+.faq-modal-content h2 {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.faq-item {
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 15px;
+}
+
+.faq-item:last-child {
+  border-bottom: none;
+}
+
+.faq-question {
+  font-weight: bold;
+  cursor: pointer;
+  list-style: none; /* Oculta el marcador de <details> */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: margin 0.2s ease;
+}
+
+.faq-question::-webkit-details-marker {
+  display: none; /* Oculta el marcador en Chrome/Safari */
+}
+
+.faq-question::after {
+  content: '+';
+  font-size: 1.5em;
+  transition: transform 0.3s ease;
+}
+
+details[open] > .faq-question {
+  margin-bottom: 10px;
+}
+
+details[open] > .faq-question::after {
+  transform: rotate(45deg);
+}
+
+.faq-answer {
+  color: #555;
+  line-height: 1.6;
+}
+
+/* --- Estilos del Modal de Referidos --- */
+.referral-modal-content {
+  background: var(--background);
+  padding: 30px 40px;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  width: 90%;
+  max-width: 550px;
+  position: relative;
+  text-align: center;
+}
+
+.referral-modal-content h2 { margin-bottom: 10px; }
+.referral-modal-content p { color: #555; margin-bottom: 25px; }
+.referral-box { text-align: left; }
+.referral-box p { margin-bottom: 8px; font-size: 0.9em; color: var(--foreground); }
+.input-group { display: flex; align-items: center; gap: 10px; }
+
+.referral-input {
+  flex-grow: 1;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background-color: #f8f8f8;
+  color: #333;
+  font-size: 1em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copy-button {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  background-color: #0070f3;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.copy-button:hover { background-color: #005bb5; }
+.referral-connect-wallet { font-weight: bold; color: var(--foreground); }
+
+
+/* --- Media Query para Responsividad --- */
+@media (max-width: 768px) {
+  .header-center, .header-nav {
+    display: none;
+  }
+  
+  /* CAMBIO: Regla más potente para ocultar el botón de la wallet en el header */
+  .header .header-wallet {
+      display: none !important;
+  }
+
+  .mobile-menu-button {
+    display: block;
+  }
+  
+  .header-logo {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .grid-scroll-container {
+    overflow-x: auto; /* This is the key property to enable horizontal scrolling */
+    -webkit-overflow-scrolling: touch; /* Provides a smoother scrolling experience on iOS */
+ /* Adds a little space so the grid doesn't touch the screen edges */
+  }
+
+  /* We adjust the grid container's margin on mobile to look better inside the scroll view */
+  .grid-container {
+      padding-bottom: 120px; /* Remove bottom padding to avoid extra space */
+  }
+
+  .referral-modal-content p { color: #ccc; }
+  .referral-input { background-color: #333; border-color: #444; color: #eee; }
+}
+
+/* --- Estilos de Dark Mode (Sin Cambios) --- */
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+  .header {
+    background-color: #1a1a1a;
+    border-bottom-color: #333;
+  }
+  .header-message, .header-nav a, .nav-button {
+    color: var(--foreground);
+  }
+  .faq-modal-content {
+    background: #222;
+  }
+  .faq-item {
+    border-bottom-color: #444;
+  }
+  .faq-answer {
+    color: #ccc;
+  }
+}
+
+
+/* --- ESTILOS DEL FOOTER MEJORADOS --- */
+.footer {
+  background-color: rgba(var(--foreground-rgb), 0.05);
+  border-top: 1px solid rgba(var(--foreground-rgb), 0.1);
+  padding: 20px;
+}
+
+.footer-content-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap; /* Permite que los elementos se apilen en pantallas pequeñas */
+  gap: 20px; /* Espacio entre el texto y los enlaces */
+}
+
+.footer-text {
+  font-size: 0.85em;
+  color: rgba(var(--foreground-rgb), 0.6);
+  text-align: center; /* Centrado por defecto para móviles */
+  flex-grow: 1;
+}
+
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 15px; /* Mantiene el espacio entre los enlaces */
+  justify-content: center;
+}
+
+/* CORRECCIÓN: Añade un divisor visual usando un pseudo-elemento CSS */
+.footer-links > a:not(:first-child)::before,
+.footer-links > .footer-link:not(:first-child)::before {
+  content: '|';
+  color: rgba(var(--foreground-rgb), 0.3);
+  margin-right: 15px; /* Crea espacio antes del divisor */
+}
+
+.footer-link {
+  font-size: 0.9em;
+  font-weight: 500;
+  color: var(--foreground);
+  transition: opacity 0.2s ease;
+}
+
+.footer-link:hover {
+  opacity: 0.7;
+}
+
+/* Ajustes para pantallas de escritorio */
+@media (min-width: 768px) {
+  .footer-text {
+    text-align: left;
+  }
+  .footer-links {
+    justify-content: flex-end;
+  }
+}
+
+/* --- ESTILOS PARA PÁGINAS LEGALES (TÉRMINOS, ETC.) --- */
+.legal-page-container {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 20px;
+}
+
+.legal-content h1 {
+  font-size: 2.5em;
+  margin-bottom: 10px;
+  font-family: "Revalia", sans-serif;
+}
+
+.legal-content h2 {
+  font-size: 1.8em;
+  margin-top: 40px;
+  margin-bottom: 15px;
+  border-bottom: 1px solid rgba(var(--foreground-rgb), 0.1);
+  padding-bottom: 5px;
+}
+
+.legal-content p, .legal-content li {
+  line-height: 1.7;
+  color: rgba(var(--foreground-rgb), 0.8);
+  margin-bottom: 15px;
+}
+
+.legal-content ul {
+  padding-left: 20px;
+}
+
+/* styles/modal.css */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px); /* Fondo con blur para modernidad */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); /* Sombra suave */
+  text-align: center;
+  max-width: 400px;
+  width: 90%; /* Responsive para móviles */
+  position: relative;
+}
+
+.modal-content h2 {
+  margin-bottom: 20px;
+  font-size: 1.5em;
+  color: #333;
+}
+
+.modal-content p {
+  margin: 10px 0;
+  font-size: 1.1em;
+  color: #555;
+}
+
+.modal-content label {
+  display: block;
+  margin: 15px 0;
+  font-weight: bold;
+  color: #333;
+}
+
+.modal-content input[type="file"] {
+  margin-top: 5px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.modal-content .image-preview {
+  margin: 10px 0;
+  max-width: 100%;
+  max-height: 200px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.modal-content button {
+  margin-top: 10px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.3s ease;
+}
+
+.modal-content button:first-of-type {
+  background: #0070f3;
+  color: white;
+}
+
+.modal-content button:first-of-type:hover {
+  background: #005bb5;
+}
+
+.modal-content button:last-of-type {
+  background: #ddd;
+  color: #333;
+  margin-left: 10px;
+}
+
+.modal-content button:last-of-type:hover {
+  background: #ccc;
+}
+
+.modal-content button:disabled {
+  background: #eee;
+  cursor: not-allowed;
+}
+
+.modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 1.5em;
+  cursor: pointer;
+  color: #aaa;
+}
+
+.modal-close:hover {
+  color: #777;
+}
+
+/* --- Estilos para el Modal en Estado de Carga --- */
+
+.modal-status-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  min-height: 250px; /* Asegura que el modal no se encoja */
+}
+
+.status-message {
+  margin-top: 20px;
+  font-size: 1.1em;
+  font-weight: 500;
+  color: var(--foreground);
+  text-align: center;
+}
+
+/* Animación del Spinner (SVG) */
+.spinner {
+  animation: rotator 1.4s linear infinite;
+}
+
+@keyframes rotator {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(270deg); }
+}
+
+.path {
+  stroke-dasharray: 187;
+  stroke-dashoffset: 0;
+  transform-origin: center;
+  stroke: #0070f3; /* Color primario */
+  animation:
+    dash 1.4s ease-in-out infinite;
+}
+
+@keyframes dash {
+  0% { stroke-dashoffset: 187; }
+  50% {
+    stroke-dashoffset: 46;
+    transform: rotate(135deg);
+  }
+  100% {
+    stroke-dashoffset: 187;
+    transform: rotate(450deg);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+
+  .header {
+    background-color: #222;
+    border-bottom: 1px solid #444;
+  }
+
+  .header-message,
+  .header-nav a {
+    color: var(--foreground);
+  }
+
+  .modal-content {
+    background: #222;
+    color: var(--foreground);
+  }
+
+  .modal-content h2,
+  .modal-content label {
+    color: var(--foreground);
+  }
+
+  .modal-content p {
+    color: #ccc;
+  }
+
+  .modal-content input[type="file"] {
+    border: 1px solid #444;
+    background: #333;
+    color: var(--foreground);
+  }
+
+  .modal-content button:last-of-type {
+    background: #444;
+    color: var(--foreground);
+  }
+
+  .modal-content button:last-of-type:hover {
+    background: #555;
+  }
+
+  .link-input {
+    background: #333;
+    color: var(--foreground);
+    border: 1px solid #444;
+    width: 100%;
+    padding: 10px;
+    border-radius: 4px;
+
+  }
+}
+
+
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+}
+
+
